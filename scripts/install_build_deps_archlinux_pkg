@@ -1,0 +1,49 @@
+#!/bin/bash
+
+PKGNAME='ocs-url'
+
+PKGUSER='pkgbuilder'
+
+PKGSCRIPT="${0}"
+
+PROJDIR="$(cd "$(dirname "${0}")/../" && pwd)"
+
+BUILDDIR="${PROJDIR}/build_${PKGNAME}"
+
+archlinux_pkg() { # docker-image: archlinux/base:latest
+    install_build_deps_archlinux_pkg
+    add_pkguser
+    su -c "export HOME=/home/${PKGUSER} && "${PKGSCRIPT}" build_archlinux_pkg" ${PKGUSER}
+}
+
+install_build_deps_archlinux_pkg() {
+    pacman -Syu --noconfirm
+    pacman -S --noconfirm curl git
+    pacman -S --noconfirm base-devel qt5-base qt5-svg qt5-declarative qt5-quickcontrols
+    pacman -S --noconfirm pacman-contrib
+}
+
+build_archlinux_pkg() {
+    rm -rf "${BUILDDIR}"
+    mkdir -p "${BUILDDIR}"
+    export_srcarchive "${BUILDDIR}/${PKGNAME}.tar.gz"
+    cp "${PROJDIR}/pkg/archlinux/PKGBUILD" "${BUILDDIR}"
+    cd "${BUILDDIR}"
+    updpkgsums
+    makepkg -s
+}
+
+add_pkguser() {
+    useradd -m ${PKGUSER}
+    chown -R ${PKGUSER} "${PROJDIR}"
+}
+
+export_srcarchive() {
+    if [ "${1}" ]; then
+        (cd "${PROJDIR}" && git archive --prefix="${PKGNAME}/" --output="${1}" HEAD)
+    fi
+}
+
+if [ "${1}" ]; then
+    ${1}
+fi
